@@ -10,7 +10,7 @@ import subprocess
 import io
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=False)
 
 UPLOAD_FOLDER = tempfile.mkdtemp()
 OUTPUT_FOLDER = tempfile.mkdtemp()
@@ -32,14 +32,24 @@ def cleanup(*paths):
             elif os.path.isdir(p): shutil.rmtree(p)
         except: pass
 
+# Handle preflight OPTIONS requests
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
 
 @app.route('/')
 def index():
     return jsonify({"status": "EggyPDF API is running!", "tools": 8})
 
 
-@app.route('/api/merge', methods=['POST'])
+@app.route('/api/merge', methods=['POST', 'OPTIONS'])
 def merge_pdf():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     files = request.files.getlist('files')
     if len(files) < 2:
         return jsonify({"error": "Please upload at least 2 PDF files."}), 400
@@ -64,8 +74,10 @@ def merge_pdf():
     return send_file(out, as_attachment=True, download_name='merged.pdf', mimetype='application/pdf')
 
 
-@app.route('/api/split', methods=['POST'])
+@app.route('/api/split', methods=['POST', 'OPTIONS'])
 def split_pdf():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     f = request.files.get('file')
     if not f or not allowed_file(f.filename, {'pdf'}):
         return jsonify({"error": "Please upload a valid PDF file."}), 400
@@ -110,8 +122,10 @@ def split_pdf():
     return send_file(zip_buf, as_attachment=True, download_name='split_pages.zip', mimetype='application/zip')
 
 
-@app.route('/api/compress', methods=['POST'])
+@app.route('/api/compress', methods=['POST', 'OPTIONS'])
 def compress_pdf():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     f = request.files.get('file')
     if not f or not allowed_file(f.filename, {'pdf'}):
         return jsonify({"error": "Please upload a valid PDF file."}), 400
@@ -136,8 +150,10 @@ def compress_pdf():
     return send_file(out, as_attachment=True, download_name='compressed.pdf', mimetype='application/pdf')
 
 
-@app.route('/api/pdf-to-word', methods=['POST'])
+@app.route('/api/pdf-to-word', methods=['POST', 'OPTIONS'])
 def pdf_to_word():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     f = request.files.get('file')
     if not f or not allowed_file(f.filename, {'pdf'}):
         return jsonify({"error": "Please upload a valid PDF file."}), 400
@@ -154,8 +170,10 @@ def pdf_to_word():
                      mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
 
 
-@app.route('/api/word-to-pdf', methods=['POST'])
+@app.route('/api/word-to-pdf', methods=['POST', 'OPTIONS'])
 def word_to_pdf():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     f = request.files.get('file')
     if not f or not allowed_file(f.filename, {'doc', 'docx'}):
         return jsonify({"error": "Please upload a valid Word file."}), 400
@@ -179,8 +197,10 @@ def word_to_pdf():
     return send_file(out, as_attachment=True, download_name='converted.pdf', mimetype='application/pdf')
 
 
-@app.route('/api/jpg-to-pdf', methods=['POST'])
+@app.route('/api/jpg-to-pdf', methods=['POST', 'OPTIONS'])
 def jpg_to_pdf():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     files = request.files.getlist('files')
     if not files:
         return jsonify({"error": "Please upload at least one image."}), 400
@@ -206,8 +226,10 @@ def jpg_to_pdf():
     return send_file(out, as_attachment=True, download_name='images.pdf', mimetype='application/pdf')
 
 
-@app.route('/api/watermark', methods=['POST'])
+@app.route('/api/watermark', methods=['POST', 'OPTIONS'])
 def add_watermark():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     f = request.files.get('file')
     text = request.form.get('text', 'CONFIDENTIAL')
     if not f or not allowed_file(f.filename, {'pdf'}):
@@ -250,8 +272,10 @@ def add_watermark():
     return send_file(out, as_attachment=True, download_name='watermarked.pdf', mimetype='application/pdf')
 
 
-@app.route('/api/protect', methods=['POST'])
+@app.route('/api/protect', methods=['POST', 'OPTIONS'])
 def protect_pdf():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     f = request.files.get('file')
     password = request.form.get('password', '')
     if not f or not allowed_file(f.filename, {'pdf'}):
